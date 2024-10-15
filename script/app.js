@@ -6,9 +6,9 @@ document.addEventListener("DOMContentLoaded", function() {
     const payButton = document.getElementById("payButton");
     const paymentStatus = document.getElementById("paymentStatus");
 
-    checkoutBtn.addEventListener('click', ()=>{
-        purchasePage.style.display ="block";
-        console.log('clicked');
+    checkoutBtn.addEventListener('click', () => {
+        purchasePage.style.display = "block";
+        console.log('Checkout button clicked');
     });
 
     payButton.addEventListener("click", function(event) {
@@ -24,30 +24,11 @@ document.addEventListener("DOMContentLoaded", function() {
             phone: phone
         })
         .then(function(response) {
-            const paymentId = response.data.paymentId;
-            pollPaymentStatus(paymentId);
+            paymentStatus.textContent = "STK Push sent. Please check your phone to complete the transaction.";
         })
         .catch(function(error) {
+            paymentStatus.textContent = "Error sending STK Push: " + error.message;
             console.log(error);
         });
-    }
-
-    function pollPaymentStatus(paymentId) {
-        const intervalId = setInterval(function() {
-            axios.get(`http://localhost:5500/payment/status/${paymentId}`)
-            .then(function(response) {
-                if (response.data.status === "success") {
-                    paymentStatus.textContent = "Payment successful!";
-                    clearInterval(intervalId);
-                } else if (response.data.status === "failed") {
-                    paymentStatus.textContent = "Payment failed: " + response.data.error;
-                    clearInterval(intervalId);
-                }
-            })
-            .catch(function(error) {
-                console.log(error);
-                clearInterval(intervalId);
-            });
-        }, 5000);
     }
 });
