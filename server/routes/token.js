@@ -1,8 +1,8 @@
 const express = require("express");
-const router = express.Router()
+const router = express.Router();
+const { createToken, stkPush, handleCallback } = require("../controller/token");
 
-const {createToken, stkPush} = require("../controller/token");
+router.post("/token", createToken, stkPush); // Create token and then STK push
+router.post("/pat", handleCallback); // Callback route
 
-router.post("/", createToken, stkPush );
-
-module.exports = router
+module.exports = router;
