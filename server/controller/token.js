@@ -5,13 +5,14 @@ let token = "";
 let tokenExpiry = 0;
 
 const createToken = async (req, res, next) => {
-    const secret = process.env.MPESA_SECRET; // Use environment variable
-    const consumer = process.env.MPESA_CONSUMER; // Use environment variable
+    const secret = process.env.MPESA_SECRET;
+    const consumer = process.env.MPESA_CONSUMER;
     const auth = Buffer.from(`${consumer}:${secret}`).toString("base64");
 
     if (token && tokenExpiry > Date.now()) {
         console.log("Using cached token");
-        return next(); // Use cached token
+        req.token = token; // Attach token to the request object
+        return next(); // Move to the next middleware (stkPush)
     }
 
     try {
@@ -24,9 +25,10 @@ const createToken = async (req, res, next) => {
             }
         );
         token = response.data.access_token;
-        tokenExpiry = Date.now() + (response.data.expires_in * 1000); // Set expiry time
+        tokenExpiry = Date.now() + response.data.expires_in * 1000;
         console.log("Token generated:", token);
-        next(); // Move to the next middleware or route handler
+        req.token = token; // Attach the new token to the request object
+        next();
     } catch (err) {
         console.error("Token generation error:", err);
         res.status(400).json({ error: "Token generation failed", details: err.response.data });
@@ -36,10 +38,10 @@ const createToken = async (req, res, next) => {
 
 // STK Push handler
 const stkPush = async (req, res) => {
-    const shortCode = process.env.MPESA_SHORTCODE; // Use environment variable
+    const shortCode = process.env.MPESA_SHORTCODE;
     const phone = req.body.phone.substring(1); // Get phone number
-    const amount = req.body.amount; // Amount from request
-    const passkey = process.env.MPESA_PASSKEY; // Use environment variable
+    const amount = req.body.amount;
+    const passkey = process.env.MPESA_PASSKEY;
     const url = "https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest";
 
     const date = new Date();
@@ -62,19 +64,15 @@ const stkPush = async (req, res) => {
         PartyA: `254${phone}`,
         PartyB: shortCode,
         PhoneNumber: `254${phone}`,
-        CallBackURL: "https://yourdomain.com/mpesa/callback", // Update to your actual callback URL
+        CallBackURL: "https://stk-push-murex.vercel.app/pat", // Use your actual callback URL
         AccountReference: "Apex Ventures",
         TransactionDesc: "Payment for product",
     };
 
-    if (!token) {
-        return res.status(401).json({ error: "Unauthorized - Token is missing or invalid." });
-    }
-
     try {
         const response = await axios.post(url, data, {
             headers: {
-                authorization: `Bearer ${token}`,
+                authorization: `Bearer ${req.token}`, // Use the token from req.token
             },
         });
         console.log("STK Push Request Sent", response.data);
@@ -110,6 +108,23 @@ const handleCallback = async (req, res) => {
     res.status(200).send({ message: "Callback received successfully" });
 };
 
+const getPaymentStatus = async (req, res) => {
+    const { transactionId } = req.query; // Assuming you want to get status based on transactionId
 
+    // Implement logic to check payment status, e.g., querying your database or external API
+    // This is just a placeholder response
+    if (!transactionId) {
+        return res.status(400).json({ error: "Transaction ID is required" });
+    }
 
-module.exports = { createToken, stkPush, handleCallback };
+    // Placeholder logic; replace with actual payment status retrieval
+    const paymentStatus = {
+        transactionId,
+        status: "Pending", // Replace this with actual status
+        // Add other relevant payment details if necessary
+    };
+
+    res.status(200).json(paymentStatus); // Send payment status back to client
+};
+
+module.exports = { createToken, stkPush, handleCallback, getPaymentStatus };

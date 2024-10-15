@@ -18,32 +18,47 @@ document.addEventListener("DOMContentLoaded", function() {
         paymentStatus.textContent = "Processing payment..."; // Initial message
         payHandler(phone, amount);
     });
-
+    
     function payHandler(phone, amount) {
         axios.post("https://stk-push-murex.vercel.app/token", { // Use your actual domain
             amount: amount,
             phone: phone
         })
         .then(function(response) {
+            if (!response.data.transactionId) {
+                throw new Error("Transaction ID not found in response.");
+            }
+
             paymentStatus.textContent = "STK Push sent. Please check your phone to complete the transaction.";
             console.log("Response:", response.data); // Log the response for debugging
+            
+            const transactionId = response.data.transactionId; // Get transactionId
+
+            // Start checking for payment status every 5 seconds
+            const interval = setInterval(() => {
+                checkPaymentStatus(transactionId, interval); // Pass the interval to clear it later
+            }, 5000);
         })
         .catch(function(error) {
             paymentStatus.textContent = "Error sending STK Push: " + error.message;
             console.log("Error:", error);
         });
     }
+    
+    function checkPaymentStatus(transactionId, interval) {
+        axios.get(`https://stk-push-murex.vercel.app/mpesa/payment-status?transactionId=${transactionId}`)
+            .then(function(response) {
+                const status = response.data.status || "Unknown status"; // Adjust based on your actual response structure
+                paymentStatus.textContent = `Payment status: ${status}`;
 
-    // Function to listen for payment status updates
-    function listenForPaymentStatus() {
-        const eventSource = new EventSource('https://stk-push-murex.vercel.app/payment-status'); // Update to your actual domain
-        eventSource.onmessage = function(event) {
-            const data = JSON.parse(event.data);
-            if (data.status) {
-                paymentStatus.textContent = `Payment status: ${data.status}`;
-            }
-        };
+                if (status === "Success" || status === "Failed") {
+                    clearInterval(interval); // Stop checking on success or failure
+                }
+            })
+            .catch(function(error) {
+                console.error("Error fetching payment status:", error);
+                paymentStatus.textContent = "Error fetching payment status.";
+                clearInterval(interval); // Stop checking on error
+            });
     }
-
-    listenForPaymentStatus(); // Call the function to start listening
 });
