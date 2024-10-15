@@ -1,3 +1,4 @@
+
 document.addEventListener("DOMContentLoaded", function() {
     const checkoutBtn = document.getElementById('checkoutBtn');
     const purchasePage = document.getElementById("purchasePage");
@@ -6,59 +7,48 @@ document.addEventListener("DOMContentLoaded", function() {
     const payButton = document.getElementById("payButton");
     const paymentStatus = document.getElementById("paymentStatus");
 
-    checkoutBtn.addEventListener('click', () => {
-        purchasePage.style.display = "block";
-        console.log('Checkout button clicked');
+    checkoutBtn.addEventListener('click', ()=>{
+        purchasePage.style.display ="block";
+        console.log('clicked');
     });
 
     payButton.addEventListener("click", function(event) {
         event.preventDefault();
         const phone = phoneInput.value;
         const amount = document.getElementById("amt").innerText; // Get the amount from the span element
-        paymentStatus.textContent = "Processing payment..."; // Initial message
         payHandler(phone, amount);
     });
-    
+
     function payHandler(phone, amount) {
-        axios.post("https://stk-push-murex.vercel.app/token", { // Use your actual domain
+        axios.post("http://localhost:5500/token", {
             amount: amount,
             phone: phone
         })
         .then(function(response) {
-            if (!response.data.transactionId) {
-                throw new Error("Transaction ID not found in response.");
-            }
-
-            paymentStatus.textContent = "STK Push sent. Please check your phone to complete the transaction.";
-            console.log("Response:", response.data); // Log the response for debugging
-            
-            const transactionId = response.data.transactionId; // Get transactionId
-
-            // Start checking for payment status every 5 seconds
-            const interval = setInterval(() => {
-                checkPaymentStatus(transactionId, interval); // Pass the interval to clear it later
-            }, 5000);
+            const paymentId = response.data.paymentId;
+            pollPaymentStatus(paymentId);
         })
         .catch(function(error) {
-            paymentStatus.textContent = "Error sending STK Push: " + error.message;
-            console.log("Error:", error);
+            console.log(error);
         });
     }
-    
-    function checkPaymentStatus(transactionId, interval) {
-        axios.get(`https://stk-push-murex.vercel.app/mpesa/payment-status?transactionId=${transactionId}`)
-            .then(function(response) {
-                const status = response.data.status || "Unknown status"; // Adjust based on your actual response structure
-                paymentStatus.textContent = `Payment status: ${status}`;
 
-                if (status === "Success" || status === "Failed") {
-                    clearInterval(interval); // Stop checking on success or failure
+    function pollPaymentStatus(paymentId) {
+        const intervalId = setInterval(function() {
+            axios.get(`http://localhost:5500/payment/status/${paymentId}`)
+            .then(function(response) {
+                if (response.data.status === "success") {
+                    paymentStatus.textContent = "Payment successful!";
+                    clearInterval(intervalId);
+                } else if (response.data.status === "failed") {
+                    paymentStatus.textContent = "Payment failed: " + response.data.error;
+                    clearInterval(intervalId);
                 }
             })
             .catch(function(error) {
-                console.error("Error fetching payment status:", error);
-                paymentStatus.textContent = "Error fetching payment status.";
-                clearInterval(interval); // Stop checking on error
+                console.log(error);
+                clearInterval(intervalId);
             });
+        }, 5000);
     }
 });

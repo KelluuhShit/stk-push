@@ -1,130 +1,79 @@
-const axios = require("axios");
 
-// Store the generated token and its expiry
-let token = "";
-let tokenExpiry = 0;
+const axios = require("axios");
+// const express = require("express");
+// const router = express.Router()
+
 
 const createToken = async (req, res, next) => {
-    const secret = process.env.MPESA_SECRET;
-    const consumer = process.env.MPESA_CONSUMER;
-    const auth = Buffer.from(`${consumer}:${secret}`).toString("base64");
-
-    if (token && tokenExpiry > Date.now()) {
-        console.log("Using cached token");
-        req.token = token; // Attach token to the request object
-        return next(); // Move to the next middleware (stkPush)
-    }
-
-    try {
-        const response = await axios.get(
+    const secret = "rFgSiLYrO30JvquYI7iUHLZx1Cs4mAF4KZ1xsArn0sXZvhQrA61xvgcme8bZWRhA";
+    const consumer = "zkNP0DwqSy5O5k72biYXZAMM1WpGGcDdeleVFbwxJAKwMJS0";
+    const auth = new Buffer.from(`${consumer}:${secret}`).toString("base64");
+    await axios
+        .get(
             "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials",
             {
                 headers: {
                     authorization: `Basic ${auth}`,
                 },
             }
-        );
-        token = response.data.access_token;
-        tokenExpiry = Date.now() + response.data.expires_in * 1000;
-        console.log("Token generated:", token);
-        req.token = token; // Attach the new token to the request object
-        next();
-    } catch (err) {
-        console.error("Token generation error:", err);
-        res.status(400).json({ error: "Token generation failed", details: err.response.data });
-    }
-};
-
-
-// STK Push handler
-const stkPush = async (req, res) => {
-    const shortCode = process.env.MPESA_SHORTCODE;
-    const phone = req.body.phone.substring(1); // Get phone number
-    const amount = req.body.amount;
-    const passkey = process.env.MPESA_PASSKEY;
-    const url = "https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest";
-
-    const date = new Date();
-    const timestamp =
-        date.getFullYear() +
-        ("0" + (date.getMonth() + 1)).slice(-2) +
-        ("0" + date.getDate()).slice(-2) +
-        ("0" + date.getHours()).slice(-2) +
-        ("0" + date.getMinutes()).slice(-2) +
-        ("0" + date.getSeconds()).slice(-2);
-
-    const password = Buffer.from(shortCode + passkey + timestamp).toString("base64");
-
-    const data = {
-        BusinessShortCode: shortCode,
-        Password: password,
-        Timestamp: timestamp,
-        TransactionType: "CustomerPayBillOnline",
-        Amount: amount,
-        PartyA: `254${phone}`,
-        PartyB: shortCode,
-        PhoneNumber: `254${phone}`,
-        CallBackURL: "https://stk-push-murex.vercel.app/pat", // Use your actual callback URL
-        AccountReference: "Apex Ventures",
-        TransactionDesc: "Payment for product",
-    };
-
-    try {
-        const response = await axios.post(url, data, {
-            headers: {
-                authorization: `Bearer ${req.token}`, // Use the token from req.token
-            },
+        )
+        //if succesfull
+        .then((data) => {
+            token = data.data.access_token;
+            console.log(data.data);
+            next();
+        })
+        //if fail, catch error
+        .catch ((err)=> {
+            console.error(err);
+            res.status(400).json(err.message);
         });
-        console.log("STK Push Request Sent", response.data);
-        res.status(200).json(response.data); // Send STK Push response to the frontend
-    } catch (err) {
-        console.error("STK Push error:", err);
-        res.status(400).json({ error: "STK Push request failed", details: err.response.data });
-    }
-};
-
-// Callback handling route
-const handleCallback = async (req, res) => {
-    const callbackData = req.body.Body.stkCallback;
-    const resultCode = callbackData.ResultCode; // 0 means success
-    const resultDesc = callbackData.ResultDesc;
-
-    if (resultCode === 0) {
-        const amount = callbackData.CallbackMetadata.Item.find(item => item.Name === "Amount").Value;
-        const mpesaReceipt = callbackData.CallbackMetadata.Item.find(item => item.Name === "MpesaReceiptNumber").Value;
-        const phone = callbackData.CallbackMetadata.Item.find(item => item.Name === "PhoneNumber").Value;
-
-        console.log(`Payment successful! Amount: ${amount}, MpesaReceiptNumber: ${mpesaReceipt}, Phone: ${phone}`);
-        // Update the payment status in your database as successful
-    } else if (resultCode === 1) { // Replace with actual cancellation code if applicable
-        console.log(`Payment canceled: ${resultDesc}`);
-        // Handle cancellation logic here (e.g., update database status)
-    } else {
-        console.log(`Payment failed: ${resultDesc}`);
-        // Update the payment status in your database as failed
     }
 
-    // Send a success acknowledgment to Safaricom to avoid retries
-    res.status(200).send({ message: "Callback received successfully" });
-};
+    const  stkPush = async(req, res) =>{
+        const shortCode = 174397
+        const phone = req.body.phone.substring(1)
+        const amount = req.body.amount
+        const passkey = "bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919";
+        const url = "https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest";
 
-const getPaymentStatus = async (req, res) => {
-    const { transactionId } = req.query; // Assuming you want to get status based on transactionId
+        const date = new Date();
+        const timestamp =
+            date.getFullYear() +
+            ("0" + (date.getMonth() + 1)).slice(-2) +
+            ("0" + date.getDate()).slice(-2) +
+            ("0" + date.getHours()).slice(-2) +
+            ("0" + date.getMinutes()).slice(-2) +
+            ("0" + date.getSeconds()).slice(-2);
 
-    // Implement logic to check payment status, e.g., querying your database or external API
-    // This is just a placeholder response
-    if (!transactionId) {
-        return res.status(400).json({ error: "Transaction ID is required" });
-    }
+            const password = new Buffer.from(shortCode + passkey + timestamp).toString(
+                "base64"
+            );
+            const data = {
+                BusinessShortCode: 174379,
+                Password: "MTc0Mzc5YmZiMjc5ZjlhYTliZGJjZjE1OGU5N2RkNzFhNDY3Y2QyZTBjODkzMDU5YjEwZjc4ZTZiNzJhZGExZWQyYzkxOTIwMTYwMjE2MTY1NjI3",
+                Timestamp: "20160216165627",
+                TransactionType: "CustomerPayBillOnline",
+                Amount: amount,
+                PartyA: `254${phone}`,
+                PartyB: 174379,
+                PhoneNumber: `254${phone}`,
+                CallBackURL: "https://mydomain.com/pat",
+                AccountReference: "Apex Ventures",
+                TransactionDesc: "Testing stk Push",
+            };
 
-    // Placeholder logic; replace with actual payment status retrieval
-    const paymentStatus = {
-        transactionId,
-        status: "Pending", // Replace this with actual status
-        // Add other relevant payment details if necessary
+            await axios.post(url, data, {
+                    headers: {
+                        authorization: `Bearer ${token}`,
+                    },
+                }).then((data)=>{
+                    console.log(data);
+                    res.status(200).json(data.data)
+                }).catch((err)=>{
+                    console.log(err);
+                    res.status(400).json(err.message);
+                });
     };
 
-    res.status(200).json(paymentStatus); // Send payment status back to client
-};
-
-module.exports = { createToken, stkPush, handleCallback, getPaymentStatus };
+    module.exports = {createToken, stkPush}
