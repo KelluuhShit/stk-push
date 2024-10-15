@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buy & Sell</title>
+    <link rel="stylesheet" href="./styles/styles.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+</head>
+<body>
+    <!-- nav page -->
+    <div class="pageTittle">
+        <div class="page-name">
+            <span>Buy & Sell</span>
+        </div>
+        <div class="page-nav">
+            <i class="fas fa-bars"></i>
+        </div>
+    </div>
+
+    <!-- products page -->
+    <span class="product-tittle">
+        OUR TOP PRODUCTS
+    </span>
+
+    <div class="products">
+        <div class="product-one">
+            <img class="pizza-img" src="https://cdn.pixabay.com/photo/2017/09/30/15/10/plate-2802332_960_720.jpg" alt="">
+            <span class="product-name">pizaa KSH/ <span id="amt">500</span></span>
+            <span class="check-btn" id="checkoutBtn">Checkout</span>
+        </div>
+    </div>
+
+    <!-- React root element -->
+    <div id="purchasePage">
+        <div class="container" id="app">
+            <h1 class="text-2xl">
+                Pay with <span class="mpesa">Mpesa</span>
+            </h1>
+            <form class="form">
+                <input id="phoneInput" placeholder="phone">
+                <!-- <input id="amountInput" placeholder="Amount"> -->
+                <button id="payButton">Pay Now</button>
+            </form>
+            <p id="paymentStatus" class="text-red-600"></p>
+        </div>
+    </div>
+
+    <!-- <script src="./client/src/App.jsx"></script> -->
+    <!-- <script>
+        // Get the checkout button element
+        const checkoutBtn = document.getElementById('checkout-btn');
+
+        // Add click event listener to the checkout button
+        checkoutBtn.addEventListener('click', function() {
+            // Render the React component when the button is clicked
+            ReactDOM.render(<App />, document.getElementById('react-root'));
+        });
+    </script> -->
+    <script src="./server/index.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script src="./script/app.js"></script>
+</body>
+</html>
